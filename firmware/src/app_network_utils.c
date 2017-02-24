@@ -77,7 +77,7 @@ void app_network_wifi_ipv6_multicast_filter_set(TCPIP_NET_HANDLE net) {
 }
 
 void app_network_wifi_powersave_config(bool enable) {
-#if DRV_WIFI_DEFAULT_POWER_SAVE == WF_ENABLED
+#if DRV_WIFI_DEFAULT_POWER_SAVE == DRV_WIFI_ENABLED
   IWPRIV_SET_PARAM wifi_set_param;
   wifi_set_param.powerSave.enabled = enable;
   iwpriv_set(POWERSAVE_SET, &wifi_set_param);
