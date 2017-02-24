@@ -23,16 +23,8 @@
 #include "app_network.h"
 
 #include "app.h"
+#include "app_network_utils.h"
 #include "system_definitions.h"
-
-#define WIFI_INTERFACE_NAME "MRF24W"
-#define WIFI_RECONNECTION_RETRY_LIMIT 16
-#define WIFI_DHCP_WAIT_THRESHOLD 60 /* seconds */
-#define IS_WIFI_INTERFACE(net_name) (strcmp(net_name, WIFI_INTERFACE_NAME) == 0)
-#define timestamp_dhcp_kickin(x)             \
-  do {                                       \
-    x = (TCPIP_DHCP_CLIENT_ENABLED ? 1 : 0); \
-  } while (0)
 
 static bool app_network_tcpip_init_wait(AppNetworkData* app_network_data) {
   SYS_STATUS tcpip_status =
@@ -66,112 +58,6 @@ static bool app_network_wifi_config(AppNetworkData* app_network_data) {
     return true;
   }
   return false;
-}
-
-static void app_network_wifi_ipv6_multicast_filter_set(TCPIP_NET_HANDLE net)
-{
-#ifdef TCPIP_STACK_USE_IPV6
-  const uint8_t *mac_addr = TCPIP_STACK_NetAddressMac(net);
-  int i;
-  uint8_t link_local_solicited_multicast_mac_addr[6];
-  uint8_t solicited_node_multicast_mac_addr[] = {0x33, 0x33, 0xff,
-                                                 0x00, 0x00, 0x00};
-  uint8_t all_nodes_multicast_mac_addr[] = {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
-
-  link_local_solicited_multicast_mac_addr[0] = 0x33;
-  link_local_solicited_multicast_mac_addr[1] = 0x33;
-  link_local_solicited_multicast_mac_addr[2] = 0xff;
-
-  for (i = 3; i < 6; i++) {
-    link_local_solicited_multicast_mac_addr[i] = mac_addr[i];
-  }
-
-  IWPRIV_SET_PARAM wifi_set_param;
-  wifi_set_param.multicast.addr = link_local_solicited_multicast_mac_addr;
-  iwpriv_set(MULTICASTFILTER_SET, &wifi_set_param);
-  wifi_set_param.multicast.addr = solicited_node_multicast_mac_addr;
-  iwpriv_set(MULTICASTFILTER_SET, &wifi_set_param);
-  wifi_set_param.multicast.addr = all_nodes_multicast_mac_addr;
-  iwpriv_set(MULTICASTFILTER_SET, &wifi_set_param);
-#endif
-}
-
-static void app_network_tcpip_ifmodules_enable(TCPIP_NET_HANDLE net) {
-  int net_index = TCPIP_STACK_NetIndexGet(net);
-  const char *net_name = TCPIP_STACK_NetNameGet(net);
-  TCPIP_DHCP_Enable(net);
-  TCPIP_DNS_Enable(net, TCPIP_DNS_ENABLE_DEFAULT);
-  if (IS_WIFI_INTERFACE(net_name)) {
-    app_network_wifi_ipv6_multicast_filter_set(net);
-  }
-#ifdef TCPIP_STACK_USE_NBNS
-  const char *netbios_name = TCPIP_STACK_NetBIOSName(net);
-  SYS_CONSOLE_PRINT("Interface %s on host %s - NBNS enabled\r\n",
-                    net_name,
-                    netbios_name);
-#endif
-#if defined(TCPIP_STACK_USE_ZEROCONF_MDNS_SD)
-  // TODO(sergey): Skip this or support actual HTTP server.
-  // NOTE: Base name of the service Must not exceed 16 bytes long.
-  char mdns_service_name[] = "MyWebServiceNameX ";
-  // NOTE: The last digit will be incremented by interface.
-  mdns_service_name[sizeof(mdns_service_name) - 2] = '1' + net_index;
-  TCPIP_MDNS_ServiceRegister(net,
-                             mdns_service_name,
-                             "_http._tcp.local", 80,
-                             ((const uint8_t *)"path=/index.htm"),
-                             1,
-                             NULL, NULL);
-#endif
-}
-
-static void app_network_wifi_powersave_config(bool enable) {
-#if DRV_WIFI_DEFAULT_POWER_SAVE == WF_ENABLED
-  IWPRIV_SET_PARAM wifi_set_param;
-  wifi_set_param.powerSave.enabled = enable;
-  iwpriv_set(POWERSAVE_SET, &wifi_set_param);
-#endif
-}
-
-static void app_network_tcpip_ifmodules_disable(TCPIP_NET_HANDLE net) {
-  const char *net_name = TCPIP_STACK_NetNameGet(net);
-  if (IS_WIFI_INTERFACE(net_name) && TCPIP_STACK_NetIsUp(net)) {
-    app_network_wifi_powersave_config(false);
-  }
-  TCPIP_DHCP_Disable(net);
-  TCPIP_DNS_Disable(net, true);
-  TCPIP_MDNS_ServiceDeregister(net);
-}
-
-static void app_network_tcpip_iface_down(TCPIP_NET_HANDLE net) {
-  TCPIP_STACK_NetDown(net);
-}
-
-static void app_network_tcpip_iface_up(TCPIP_NET_HANDLE net) {
-  SYS_MODULE_OBJ tcpip_stack_object;
-  TCPIP_STACK_INIT tcpip_init_data;
-  const TCPIP_NETWORK_CONFIG *network_config;
-  uint16_t net_index = TCPIP_STACK_NetIndexGet(net);
-  tcpip_stack_object = TCPIP_STACK_Initialize(0, 0);
-  TCPIP_STACK_InitializeDataGet(tcpip_stack_object, &tcpip_init_data);
-  network_config = tcpip_init_data.pNetConf + net_index;
-  TCPIP_STACK_NetUp(net, network_config);
-}
-
-static void app_network_wifi_DHCPS_sync(TCPIP_NET_HANDLE net) {
-#ifdef TCPIP_STACK_USE_DHCP_SERVER
-  bool updated;
-  TCPIP_MAC_ADDR addr;
-  IWPRIV_GET_PARAM wifi_get_param;
-
-  wifi_get_param.clientInfo.addr = addr.v;
-  iwpriv_get(CLIENTINFO_GET, &wifi_get_param);
-  updated = wifi_get_param.clientInfo.updated;
-
-  if (updated) {
-    TCPIP_DHCPS_LeaseEntryRemove(net, (TCPIP_MAC_ADDR *)&addr);
-  }
-#endif
 }
 
 static void app_network_tcpip_module_enable(AppNetworkData* app_network_data) {
