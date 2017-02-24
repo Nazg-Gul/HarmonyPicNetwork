@@ -70,12 +70,14 @@ static void app_network_tcpip_module_enable(AppNetworkData* app_network_data) {
 }
 
 static void app_network_run(AppNetworkData* app_network_data) {
-  int i, num_nets;
-  static bool isWiFiPowerSaveConfigured = false;
-  static bool wasNetUp[2] = {true, true}; // this app supports 2 interfaces so far
+  // NOTE: This app supports 2 interfaces so far.
+  // TODO(sergey): Move static variables to application state.
+  static bool is_wifi_power_save_configured = false;
+  static bool was_net_up[2] = {true, true};
   static uint32_t reconn_retries = 0;
-  static uint32_t startTick = 0;
-  static IPV4_ADDR dwLastIP[2] = { {-1}, {-1} }; // this app supports 2 interfaces so far
+  static uint32_t start_tick = 0;
+  static IPV4_ADDR last_ip[2] = { {-1}, {-1} };
+  int i, num_nets;
   TCPIP_NET_HANDLE wifi_net_handle = app_network_data->wifi_net_handle;
   IWPRIV_GET_PARAM wifi_get_param;
 
@@ -94,7 +96,7 @@ static void app_network_run(AppNetworkData* app_network_data) {
         app_network_tcpip_ifmodules_disable(wifi_net_handle);
         app_network_tcpip_iface_down(wifi_net_handle);
         app_network_tcpip_iface_up(wifi_net_handle);
-        isWiFiPowerSaveConfigured = false;
+        is_wifi_power_save_configured = false;
         app_network_data->state = APP_NETWORK_WIFI_CONFIG;
         return;
       }
@@ -103,7 +105,7 @@ static void app_network_run(AppNetworkData* app_network_data) {
       // Restart DHCP client and config power save.
       TCPIP_DHCP_Disable(wifi_net_handle);
       TCPIP_DHCP_Enable(wifi_net_handle);
-      isWiFiPowerSaveConfigured = false;
+      is_wifi_power_save_configured = false;
       timestamp_dhcp_kickin(app_network_data->ip_wait);
       break;
     default:
@@ -114,27 +116,27 @@ static void app_network_run(AppNetworkData* app_network_data) {
   num_nets = TCPIP_STACK_NumberOfNetworksGet();
   for (i = 0; i < num_nets; ++i) {
     TCPIP_NET_HANDLE net = TCPIP_STACK_IndexToNet(i);
-    if (!TCPIP_STACK_NetIsUp(net) && wasNetUp[i]) {
+    if (!TCPIP_STACK_NetIsUp(net) && was_net_up[i]) {
       const char *net_name = TCPIP_STACK_NetNameGet(net);
-      wasNetUp[i] = false;
+      was_net_up[i] = false;
       app_network_tcpip_ifmodules_disable(net);
       if (IS_WIFI_INTERFACE(net_name)) {
-        isWiFiPowerSaveConfigured = false;
+        is_wifi_power_save_configured = false;
       }
     }
-    if (TCPIP_STACK_NetIsUp(net) && !wasNetUp[i]) {
-      wasNetUp[i] = true;
+    if (TCPIP_STACK_NetIsUp(net) && !was_net_up[i]) {
+      was_net_up[i] = true;
       app_network_tcpip_ifmodules_enable(net);
     }
   }
 
   // If we get a new IP address that is different than the default one,
   // we will run PowerSave configuration.
-  if (!isWiFiPowerSaveConfigured &&
+  if (!is_wifi_power_save_configured &&
     TCPIP_STACK_NetIsUp(wifi_net_handle) &&
     (TCPIP_STACK_NetAddress(wifi_net_handle) != app_network_data->wifi_default_ip.Val)) {
     app_network_wifi_powersave_config(true);
-    isWiFiPowerSaveConfigured = true;
+    is_wifi_power_save_configured = true;
   }
 
   app_network_wifi_DHCPS_sync(wifi_net_handle);
@@ -145,8 +147,8 @@ static void app_network_run(AppNetworkData* app_network_data) {
     IPV4_ADDR ipAddr;
     TCPIP_NET_HANDLE netH = TCPIP_STACK_IndexToNet(i);
     ipAddr.Val = TCPIP_STACK_NetAddress(netH);
-    if (dwLastIP[i].Val != ipAddr.Val) {
-      dwLastIP[i].Val = ipAddr.Val;
+    if (last_ip[i].Val != ipAddr.Val) {
+      last_ip[i].Val = ipAddr.Val;
       if (ipAddr.Val != 0) {
         SYS_CONSOLE_PRINT("%s IPv4 Address: %d.%d.%d.%d \r\n",
                           TCPIP_STACK_NetNameGet(netH),
@@ -156,15 +158,18 @@ static void app_network_run(AppNetworkData* app_network_data) {
     }
   }
 
-  if (SYS_TMR_TickCountGet() - startTick >= SYS_TMR_TickCounterFrequencyGet() / 2ul) {
-    if (app_network_data->ip_wait && ++app_network_data->ip_wait > WIFI_DHCP_WAIT_THRESHOLD) {
+  const uint32_t time_delta = SYS_TMR_TickCountGet() - start_tick;
+  const uint32_t time_threshold = SYS_TMR_TickCounterFrequencyGet() / 2ul;
+  if (time_delta >= time_threshold) {
+    if (app_network_data->ip_wait &&
+        ++app_network_data->ip_wait > WIFI_DHCP_WAIT_THRESHOLD) {
       app_network_data->ip_wait = 0;
       if (wifi_get_param.conn.status == IWPRIV_CONNECTION_SUCCESSFUL)
         SYS_CONSOLE_MESSAGE(
             "\r\nFailed to obtain an IP address from DHCP server\r\n"
             "If WEP security is used, double-check if the key is valid\r\n");
     }
-    startTick = SYS_TMR_TickCountGet();
+    start_tick = SYS_TMR_TickCountGet();
   }
 }
 
@@ -175,7 +180,7 @@ void APP_Network_Initialize(AppNetworkData* app_network_data,
   app_network_data->state = APP_NETWORK_TCPIP_WAIT_INIT;
   app_network_data->ip_wait = 0;
   // Initialize WiFi networking.
-  app_network_data->wifi_default_ip.Val = 0;
+  app_network_data->wifi_default_ip.Val = -1;
   app_network_data->wifi_net_handle = NULL;
   IWPRIV_SET_PARAM wifi_set_param;
   wifi_set_param.conn.initConnAllowed = true;
