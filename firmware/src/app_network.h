@@ -60,6 +60,8 @@ typedef struct {
   // WiFi-related fields.
   IPV4_ADDR wifi_default_ip;
   TCPIP_NET_HANDLE wifi_net_handle;
+  // TODO(sergey): Does it make sense to keep get/set params in the global
+  // context?
   IWPRIV_GET_PARAM wifi_get_param;
   IWPRIV_SET_PARAM wifi_set_param;
   DRV_WIFI_CONFIG_DATA wifi_config;

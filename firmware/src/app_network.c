@@ -52,12 +52,12 @@ static bool app_network_tcpip_init_wait(AppNetworkData* app_network_data) {
 static bool app_network_wifi_config(AppNetworkData* app_network_data) {
   // THe following condition is required in case Wi-Fi interface is reset
   // due to connection error.
-  iwpriv_get(DRVSTATUS_GET, &app_network_data->wifi_get_param);
+  IWPRIV_GET_PARAM* get_param = &app_network_data->wifi_get_param;
+  iwpriv_get(DRVSTATUS_GET, get_param);
   if (app_network_data->wifi_get_param.driverStatus.isOpen) {
     SYS_CONSOLE_MESSAGE("APP: WiFi driver is open\r\n");
-    app_network_data->wifi_get_param.devInfo.data =
-        &app_network_data->wifi_device_info;
-    iwpriv_get(DEVICEINFO_GET, &app_network_data->wifi_get_param);
+    get_param->devInfo.data = &app_network_data->wifi_device_info;
+    iwpriv_get(DEVICEINFO_GET, get_param);
     app_network_data->wifi_net_handle =
         TCPIP_STACK_NetHandleGet(WIFI_INTERFACE_NAME);
     app_network_data->wifi_default_ip.Val =
@@ -68,13 +68,45 @@ static bool app_network_wifi_config(AppNetworkData* app_network_data) {
   return false;
 }
 
-static void app_network_tcpip_ifmodules_enable(TCPIP_NET_HANDLE net) {
+static void app_network_wifi_ipv6_multicast_filter_set(
+    AppNetworkData* app_network_data,
+    TCPIP_NET_HANDLE net)
+{
+#ifdef TCPIP_STACK_USE_IPV6
+  const uint8_t *mac_addr = TCPIP_STACK_NetAddressMac(net);
+  int i;
+  uint8_t link_local_solicited_multicast_mac_addr[6];
+  uint8_t solicited_node_multicast_mac_addr[] = {0x33, 0x33, 0xff,
+                                                 0x00, 0x00, 0x00};
+  uint8_t all_nodes_multicast_mac_addr[] = {0x33, 0x33, 0x00, 0x00, 0x00, 0x01};
+
+  link_local_solicited_multicast_mac_addr[0] = 0x33;
+  link_local_solicited_multicast_mac_addr[1] = 0x33;
+  link_local_solicited_multicast_mac_addr[2] = 0xff;
+
+  for (i = 3; i < 6; i++) {
+      link_local_solicited_multicast_mac_addr[i] = mac_addr[i];
+  }
+
+  IWPRIV_SET_PARAM* set_param = &app_network_data->wifi_set_param;
+  set_param->multicast.addr = link_local_solicited_multicast_mac_addr;
+  iwpriv_set(MULTICASTFILTER_SET, set_param);
+  set_param->multicast.addr = solicited_node_multicast_mac_addr;
+  iwpriv_set(MULTICASTFILTER_SET, set_param);
+  set_param->multicast.addr = all_nodes_multicast_mac_addr;
+  iwpriv_set(MULTICASTFILTER_SET, set_param);
+#endif
+}
+
+static void app_network_tcpip_ifmodules_enable(
+    AppNetworkData* app_network_data,
+    TCPIP_NET_HANDLE net) {
   int net_index = TCPIP_STACK_NetIndexGet(net);
   const char *net_name = TCPIP_STACK_NetNameGet(net);
   TCPIP_DHCP_Enable(net);
   TCPIP_DNS_Enable(net, TCPIP_DNS_ENABLE_DEFAULT);
   if (IS_WIFI_INTERFACE(net_name)) {
-    // APP_WIFI_IPv6MulticastFilter_Set(net);
+    app_network_wifi_ipv6_multicast_filter_set(app_network_data, net);
   }
 #ifdef TCPIP_STACK_USE_NBNS
   const char *netbios_name = TCPIP_STACK_NetBIOSName(net);
@@ -153,7 +185,8 @@ static void app_network_tcpip_module_enable(AppNetworkData* app_network_data) {
   int i, num_networks = TCPIP_STACK_NumberOfNetworksGet();
   SYS_CONSOLE_PRINT("APP: Enabling %d modules\r\n", num_networks);
   for (i = 0; i < num_networks; ++i) {
-    app_network_tcpip_ifmodules_enable(TCPIP_STACK_IndexToNet(i));
+    app_network_tcpip_ifmodules_enable(app_network_data,
+                                       TCPIP_STACK_IndexToNet(i));
   }
   app_network_data->state = APP_NETWORK_TCPIP_TRANSACT;
 }
@@ -165,21 +198,24 @@ static void app_network_run(AppNetworkData* app_network_data) {
   static uint32_t reconn_retries = 0;
   static uint32_t startTick = 0;
   static IPV4_ADDR dwLastIP[2] = { {-1}, {-1} }; // this app supports 2 interfaces so far
+  TCPIP_NET_HANDLE wifi_net_handle = app_network_data->wifi_net_handle;
+  IWPRIV_GET_PARAM* wifi_get_param = &app_network_data->wifi_get_param;
 
-  iwpriv_get(CONNSTATUS_GET, &app_network_data->wifi_get_param);
-  switch (app_network_data->wifi_get_param.conn.status) {
+  iwpriv_get(CONNSTATUS_GET, wifi_get_param);
+  switch (wifi_get_param->conn.status) {
     case IWPRIV_CONNECTION_SUCCESSFUL:
       // Resetting reconnection retries.
       reconn_retries = 0;
       break;
     case IWPRIV_CONNECTION_FAILED:
       if (reconn_retries++ < WIFI_RECONNECTION_RETRY_LIMIT) {
-        SYS_CONSOLE_PRINT("\r\nCouldn't connect to target AP, resetting Wi-Fi module and trying to reconnect, retries left: %u\r\n\n",
+        SYS_CONSOLE_PRINT("\r\nCouldn't connect to target AP, "
+                          "resetting Wi-Fi module and trying to reconnect, "
+                          "retries left: %u\r\n",
                           WIFI_RECONNECTION_RETRY_LIMIT - reconn_retries);
-        app_network_tcpip_ifmodules_disable(app_network_data,
-                                            app_network_data->wifi_net_handle);
-        app_network_tcpip_iface_down(app_network_data->wifi_net_handle);
-        app_network_tcpip_iface_up(app_network_data->wifi_net_handle);
+        app_network_tcpip_ifmodules_disable(app_network_data, wifi_net_handle);
+        app_network_tcpip_iface_down(wifi_net_handle);
+        app_network_tcpip_iface_up(wifi_net_handle);
         isWiFiPowerSaveConfigured = false;
         app_network_data->state = APP_NETWORK_WIFI_CONFIG;
         return;
@@ -187,8 +223,8 @@ static void app_network_run(AppNetworkData* app_network_data) {
       break;
     case IWPRIV_CONNECTION_REESTABLISHED:
       // Restart DHCP client and config power save.
-      TCPIP_DHCP_Disable(app_network_data->wifi_net_handle);
-      TCPIP_DHCP_Enable(app_network_data->wifi_net_handle);
+      TCPIP_DHCP_Disable(wifi_net_handle);
+      TCPIP_DHCP_Enable(wifi_net_handle);
       isWiFiPowerSaveConfigured = false;
       timestamp_dhcp_kickin(app_network_data->ip_wait);
       break;
@@ -210,21 +246,20 @@ static void app_network_run(AppNetworkData* app_network_data) {
     }
     if (TCPIP_STACK_NetIsUp(net) && !wasNetUp[i]) {
       wasNetUp[i] = true;
-      app_network_tcpip_ifmodules_enable(net);
+      app_network_tcpip_ifmodules_enable(app_network_data, net);
     }
   }
 
   // If we get a new IP address that is different than the default one,
   // we will run PowerSave configuration.
   if (!isWiFiPowerSaveConfigured &&
-    TCPIP_STACK_NetIsUp(app_network_data->wifi_net_handle) &&
-    (TCPIP_STACK_NetAddress(app_network_data->wifi_net_handle) != app_network_data->wifi_default_ip.Val)) {
+    TCPIP_STACK_NetIsUp(wifi_net_handle) &&
+    (TCPIP_STACK_NetAddress(wifi_net_handle) != app_network_data->wifi_default_ip.Val)) {
     app_network_wifi_powersave_config(app_network_data, true);
     isWiFiPowerSaveConfigured = true;
   }
 
-  app_network_wifi_DHCPS_sync(app_network_data,
-                              app_network_data->wifi_net_handle);
+  app_network_wifi_DHCPS_sync(app_network_data, wifi_net_handle);
 
   // If the IP address of an interface has changed, 
   // display the new value on console.
@@ -246,9 +281,10 @@ static void app_network_run(AppNetworkData* app_network_data) {
   if (SYS_TMR_TickCountGet() - startTick >= SYS_TMR_TickCounterFrequencyGet() / 2ul) {
     if (app_network_data->ip_wait && ++app_network_data->ip_wait > WIFI_DHCP_WAIT_THRESHOLD) {
       app_network_data->ip_wait = 0;
-      if (app_network_data->wifi_get_param.conn.status == IWPRIV_CONNECTION_SUCCESSFUL)
-        SYS_CONSOLE_MESSAGE("\r\nFailed to obtain an IP address from DHCP server\r\n \
-          If WEP security is used, double-check if the key is valid\r\n");
+      if (wifi_get_param->conn.status == IWPRIV_CONNECTION_SUCCESSFUL)
+        SYS_CONSOLE_MESSAGE(
+            "\r\nFailed to obtain an IP address from DHCP server\r\n"
+            "If WEP security is used, double-check if the key is valid\r\n");
     }
     startTick = SYS_TMR_TickCountGet();
   }
