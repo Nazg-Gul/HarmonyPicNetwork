@@ -1119,7 +1119,7 @@
       <Template dnOrder="1">
         <Name dnOrder="0">system_init.c</Name>
         <Path dnOrder="1">Source Files/app/system_config/default</Path>
-        <Checksum dnOrder="2">55C7A904FCA4FA54DE7F98A8D505461B</Checksum>
+        <Checksum dnOrder="2">572EF75C3E5E6338A7E3A122EF1F6247</Checksum>
         <ProjectFileChecksum dnOrder="3">37F2E424E459BBCA343EDD10F048738F</ProjectFileChecksum>
       </Template>
       <Template dnOrder="2">
@@ -1185,7 +1185,7 @@
       <Template dnOrder="14">
         <Name dnOrder="0">system_config.h</Name>
         <Path dnOrder="1">Header Files/app/system_config/default</Path>
-        <Checksum dnOrder="2">BE175C33A8C3DCFA693BDED469DE4C07</Checksum>
+        <Checksum dnOrder="2">06DF21D204DAF83EE552A2D75EE10B25</Checksum>
       </Template>
       <Template dnOrder="15">
         <Name dnOrder="0">app.h</Name>

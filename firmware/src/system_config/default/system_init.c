@@ -88,7 +88,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #pragma config USERID =     0xffff
 #pragma config FSRSSEL =    PRIORITY_7
 #pragma config FMIIEN =     OFF
-#pragma config FETHIO =     OFF
+#pragma config FETHIO =     ON
 #pragma config FCANIO =     OFF
 #pragma config FUSBIDIO =   OFF
 #pragma config FVBUSONIO =  OFF
@@ -503,6 +503,20 @@ const TCPIP_NETWORK_CONFIG __attribute__((unused))  TCPIP_HOSTS_CONFIGURATION[] 
         TCPIP_NETWORK_DEFAULT_INTERFACE_FLAGS,      // startFlags
        &TCPIP_NETWORK_DEFAULT_MAC_DRIVER,           // pMacObject
     },
+/*** Network Configuration Index 1 ***/
+    {
+        TCPIP_NETWORK_DEFAULT_INTERFACE_NAME_IDX1,       // interface
+        TCPIP_NETWORK_DEFAULT_HOST_NAME_IDX1,            // hostName
+        TCPIP_NETWORK_DEFAULT_MAC_ADDR_IDX1,             // macAddr
+        TCPIP_NETWORK_DEFAULT_IP_ADDRESS_IDX1,           // ipAddr
+        TCPIP_NETWORK_DEFAULT_IP_MASK_IDX1,              // ipMask
+        TCPIP_NETWORK_DEFAULT_GATEWAY_IDX1,              // gateway
+        TCPIP_NETWORK_DEFAULT_DNS_IDX1,                  // priDNS
+        TCPIP_NETWORK_DEFAULT_SECOND_DNS_IDX1,           // secondDNS
+        TCPIP_NETWORK_DEFAULT_POWER_MODE_IDX1,           // powerMode
+        TCPIP_NETWORK_DEFAULT_INTERFACE_FLAGS_IDX1,      // startFlags
+       &TCPIP_NETWORK_DEFAULT_MAC_DRIVER_IDX1,           // pMacObject
+    },
 };
 
 const TCPIP_STACK_MODULE_CONFIG TCPIP_STACK_MODULE_CONFIG_TBL [] =
@@ -522,6 +536,7 @@ const TCPIP_STACK_MODULE_CONFIG TCPIP_STACK_MODULE_CONFIG_TBL [] =
     {TCPIP_MODULE_MDNS,             0},                             // TCPIP_MODULE_MDNS,
     { TCPIP_MODULE_MANAGER,         &tcpipHeapConfig },             // TCPIP_MODULE_MANAGER
     // MAC modules
+    {TCPIP_MODULE_MAC_PIC32INT,     &tcpipMACPIC32INTInitData},     // TCPIP_MODULE_MAC_PIC32INT
     {TCPIP_MODULE_MAC_MRF24W,       &macMRF24WConfigData},          // TCPIP_MODULE_MAC_MRF24W
 
 };
@@ -642,7 +657,7 @@ void SYS_Initialize ( void* data )
     SYS_INT_VectorPrioritySet(INT_VECTOR_ETH, INT_PRIORITY_LEVEL5);
 
     /* set sub-priority for ETHERNET interrupt source */
-    SYS_INT_VectorSubprioritySet(INT_VECTOR_ETH, INT_SUBPRIORITY_LEVEL3);
+    SYS_INT_VectorSubprioritySet(INT_VECTOR_ETH, INT_SUBPRIORITY_LEVEL0);
     
     /* TCPIP Stack Initialization */
     sysObj.tcpip = TCPIP_STACK_Init();
