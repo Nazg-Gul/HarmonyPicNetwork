@@ -1,2 +1,9 @@
 /firmware/HarmonyPicNetwork.X/build/default/
 /firmware/HarmonyPicNetwork.X/dist/default/
+
+# Makefiles autogenerados
+/firmware/HarmonyPicNetwork.X/nbproject/Makefile-default.mk
+/firmware/HarmonyPicNetwork.X/nbproject/Makefile-genesis.properties
+/firmware/HarmonyPicNetwork.X/nbproject/Makefile-impl.mk
+/firmware/HarmonyPicNetwork.X/nbproject/Makefile-variables.mk
+/firmware/HarmonyPicNetwork.X/nbproject/Makefile-local-default.mk
