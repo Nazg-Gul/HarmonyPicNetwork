@@ -20,37 +20,21 @@
 //
 // Author: Sergey Sharybin (sergey.vfx@gmail.com)
 
-#include "app.h"
-
 #include "app_command.h"
+
 #include "app_network.h"
+#include "system_definitions.h"
 
-static bool app_greetings(AppData* app_data) {
-  SYS_CONSOLE_MESSAGE("====================================\r\n");
-  SYS_CONSOLE_MESSAGE("***  Ethernet/Wi-Fi TCP/IP Demo  ***\r\n");
-  SYS_CONSOLE_MESSAGE("====================================\r\n\r\n");
-  app_data->state = APP_RUN_SERVICES;
-  return true;
-}
+static AppData* g_app_data;
 
-void APP_Initialize(AppData* app_data, SYSTEM_OBJECTS* system_objects) {
-  app_data->system_objects = system_objects;
-  app_data->state = APP_GREETINGS;
-  APP_Command_Initialize(app_data);
-  APP_Network_Initialize(&app_data->network, app_data->system_objects);
-}
+static const SYS_CMD_DESCRIPTOR commands[] = {
+};
 
-void APP_Tasks(AppData* app_data) {
-  switch (app_data->state) {
-    case APP_GREETINGS:
-      if (!app_greetings(app_data)) {
-        break;
-      }
-    case APP_RUN_SERVICES:
-      APP_Network_Tasks(&app_data->network);
-      break;
-    case APP_ERROR:
-      // TODO(sergey): Do we need to do something here?
-      break;
+void APP_Command_Initialize(AppData* app_data) {
+  const int num_commands = sizeof(commands) / sizeof(*commands);
+  if (SYS_CMD_ADDGRP(commands, num_commands, "app", ": app commands") == -1) {
+    SYS_CONSOLE_MESSAGE("APP: Error initializing command processor\r\n");
   }
+  g_app_data = app_data;
 }
+

@@ -35,7 +35,23 @@ static bool app_network_tcpip_init_wait(AppNetworkData* app_network_data) {
     return true;
   } else if (tcpip_status == SYS_STATUS_READY) {
     SYS_CONSOLE_MESSAGE("TCP/IP stack initialization succeeded.\r\n");
-    app_network_data->state = APP_NETWORK_WIFI_CONFIG;
+    // If we don't have WiFi configured, we skip corresponding
+    // initialization step.
+    bool has_wifi = false;
+    int i, num_nets = TCPIP_STACK_NumberOfNetworksGet();
+    for (i = 0; i < num_nets; ++i) {
+      TCPIP_NET_HANDLE net = TCPIP_STACK_IndexToNet(i);
+      const char *net_name = TCPIP_STACK_NetNameGet(net);
+      if (IS_WIFI_INTERFACE(net_name)) {
+        has_wifi = true;
+      }
+    }
+    if (has_wifi) {
+      SYS_CONSOLE_MESSAGE("APP: Waiting WiFI module to finish configuration\r\n");
+      app_network_data->state = APP_NETWORK_WIFI_CONFIG;
+    } else {
+      app_network_data->state = APP_NETWORK_TCPIP_MODULES_ENABLE;
+    }
     return true;
   }
   return false;

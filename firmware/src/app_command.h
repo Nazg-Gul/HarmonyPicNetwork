@@ -20,37 +20,11 @@
 //
 // Author: Sergey Sharybin (sergey.vfx@gmail.com)
 
+#ifndef _APP_COMMAND_H
+#define _APP_COMMAND_H
+
 #include "app.h"
 
-#include "app_command.h"
-#include "app_network.h"
+void APP_Command_Initialize(AppData* app_data);
 
-static bool app_greetings(AppData* app_data) {
-  SYS_CONSOLE_MESSAGE("====================================\r\n");
-  SYS_CONSOLE_MESSAGE("***  Ethernet/Wi-Fi TCP/IP Demo  ***\r\n");
-  SYS_CONSOLE_MESSAGE("====================================\r\n\r\n");
-  app_data->state = APP_RUN_SERVICES;
-  return true;
-}
-
-void APP_Initialize(AppData* app_data, SYSTEM_OBJECTS* system_objects) {
-  app_data->system_objects = system_objects;
-  app_data->state = APP_GREETINGS;
-  APP_Command_Initialize(app_data);
-  APP_Network_Initialize(&app_data->network, app_data->system_objects);
-}
-
-void APP_Tasks(AppData* app_data) {
-  switch (app_data->state) {
-    case APP_GREETINGS:
-      if (!app_greetings(app_data)) {
-        break;
-      }
-    case APP_RUN_SERVICES:
-      APP_Network_Tasks(&app_data->network);
-      break;
-    case APP_ERROR:
-      // TODO(sergey): Do we need to do something here?
-      break;
-  }
-}
+#endif  // _APP_H
