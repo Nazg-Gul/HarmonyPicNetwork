@@ -641,6 +641,76 @@ extern "C" {
 
 /*** IPv4 Configuration ***/
 
+/*** USB Driver Configuration ***/
+
+
+/* Enables Device Support */
+#define DRV_USBFS_DEVICE_SUPPORT      true
+
+/* Disable Device Support */
+#define DRV_USBFS_HOST_SUPPORT      false
+
+/* Maximum USB driver instances */
+#define DRV_USBFS_INSTANCES_NUMBER    1
+
+
+/* Interrupt mode enabled */
+#define DRV_USBFS_INTERRUPT_MODE      true
+
+
+/* Number of Endpoints used */
+#define DRV_USBFS_ENDPOINTS_NUMBER    2
+
+
+
+
+/*** USB Device Stack Configuration ***/
+
+
+
+
+
+
+
+
+
+
+/* The USB Device Layer will not initialize the USB Driver */
+#define USB_DEVICE_DRIVER_INITIALIZE_EXPLICIT
+
+/* Maximum device layer instances */
+#define USB_DEVICE_INSTANCES_NUMBER     1
+
+/* EP0 size in bytes */
+#define USB_DEVICE_EP0_BUFFER_SIZE      8
+
+
+
+
+
+
+
+
+
+/* Maximum instances of HID function driver */
+#define USB_DEVICE_HID_INSTANCES_NUMBER     1
+
+
+
+
+
+
+
+
+
+
+/* HID Transfer Queue Size for both read and
+   write. Applicable to all instances of the
+   function driver */
+#define USB_DEVICE_HID_QUEUE_DEPTH_COMBINED 2
+
+
+
 
 
 // *****************************************************************************

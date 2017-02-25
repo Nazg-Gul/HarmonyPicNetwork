@@ -47,7 +47,7 @@ static bool app_network_tcpip_init_wait(AppNetworkData* app_network_data) {
       }
     }
     if (has_wifi) {
-      SYS_CONSOLE_MESSAGE("APP: Waiting WiFI module to finish configuration\r\n");
+      SYS_CONSOLE_MESSAGE("APP NETWORK: Waiting WiFI module to finish configuration\r\n");
       app_network_data->state = APP_NETWORK_WIFI_CONFIG;
     } else {
       app_network_data->state = APP_NETWORK_TCPIP_MODULES_ENABLE;
@@ -63,7 +63,7 @@ static bool app_network_wifi_config(AppNetworkData* app_network_data) {
   IWPRIV_GET_PARAM wifi_get_param;
   iwpriv_get(DRVSTATUS_GET, &wifi_get_param);
   if (wifi_get_param.driverStatus.isOpen) {
-    SYS_CONSOLE_MESSAGE("APP: WiFi driver is open\r\n");
+    SYS_CONSOLE_MESSAGE("APP NETWORK: WiFi driver is open\r\n");
     wifi_get_param.devInfo.data = &app_network_data->wifi_device_info;
     iwpriv_get(DEVICEINFO_GET, &wifi_get_param);
     app_network_data->wifi_net_handle =
@@ -78,7 +78,7 @@ static bool app_network_wifi_config(AppNetworkData* app_network_data) {
 
 static void app_network_tcpip_module_enable(AppNetworkData* app_network_data) {
   int i, num_networks = TCPIP_STACK_NumberOfNetworksGet();
-  SYS_CONSOLE_PRINT("APP: Enabling %d modules\r\n", num_networks);
+  SYS_CONSOLE_PRINT("APP NETWORK: Enabling %d modules\r\n", num_networks);
   for (i = 0; i < num_networks; ++i) {
     app_network_tcpip_ifmodules_enable(TCPIP_STACK_IndexToNet(i));
   }

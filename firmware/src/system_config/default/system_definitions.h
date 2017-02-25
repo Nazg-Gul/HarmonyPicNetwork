@@ -66,8 +66,11 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "driver/spi/drv_spi.h"
 #include "system/debug/sys_debug.h"
 #include "system/command/sys_command.h"
+#include "driver/usb/usbfs/drv_usbfs.h"
+#include "usb/usb_device.h"
 
 
+#include "usb/usb_device_hid.h"
 
 #include "tcpip/tcpip.h"
 #include "driver/ethmac/drv_ethmac.h"
@@ -118,6 +121,11 @@ typedef struct
 
     /*** SPI Object for Index 0 ***/
     SYS_MODULE_OBJ				spiObjectIdx0;
+    SYS_MODULE_OBJ  drvUSBObject;
+    
+    SYS_MODULE_OBJ  usbDevObject0;
+
+
     SYS_MODULE_OBJ  tcpip;
     SYS_MODULE_OBJ  drvMiim;
     SYS_MODULE_OBJ  netPres;
@@ -132,6 +140,7 @@ typedef struct
 // *****************************************************************************
 
 extern SYSTEM_OBJECTS sysObj;
+
 
 
 //DOM-IGNORE-BEGIN

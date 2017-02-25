@@ -99,6 +99,16 @@ void __ISR(_TIMER_2_VECTOR, ipl4AUTO) IntHandlerDrvTmrInstance0(void)
 
  
  
+	
+	
+	
+void __ISR(_USB_1_VECTOR, ipl4AUTO) _IntHandlerUSBInstance0(void)
+{
+    DRV_USBFS_Tasks_ISR(sysObj.drvUSBObject);
+}
+
+
+
 void __ISR(_ETH_VECTOR, ipl5AUTO) _IntHandler_ETHMAC(void)
 {
     DRV_ETHMAC_Tasks_ISR((SYS_MODULE_OBJ)0);

@@ -20,40 +20,19 @@
 //
 // Author: Sergey Sharybin (sergey.vfx@gmail.com)
 
-#include "app.h"
+#ifndef _APP_USB_HID_UTILS_H
+#define _APP_USB_HID_UTILS_H
 
-#include "app_command.h"
-#include "app_network.h"
-#include "app_usb_hid.h"
+#include "system_definitions.h"
 
-static bool app_greetings(AppData* app_data) {
-  SYS_CONSOLE_MESSAGE("====================================\r\n");
-  SYS_CONSOLE_MESSAGE("***  Ethernet/Wi-Fi TCP/IP Demo  ***\r\n");
-  SYS_CONSOLE_MESSAGE("====================================\r\n\r\n");
-  app_data->state = APP_RUN_SERVICES;
-  return true;
-}
+USB_DEVICE_HID_EVENT_RESPONSE app_usb_device_hid_event_handler(
+    USB_DEVICE_HID_INDEX iHID,
+    USB_DEVICE_HID_EVENT event,
+    void* event_data,
+    uintptr_t user_data);
 
-void APP_Initialize(AppData* app_data, SYSTEM_OBJECTS* system_objects) {
-  app_data->system_objects = system_objects;
-  app_data->state = APP_GREETINGS;
-  APP_Command_Initialize(app_data);
-  APP_Network_Initialize(&app_data->network, app_data->system_objects);
-  APP_USB_HID_Initialize(&app_data->usb_hid);
-}
+void app_usb_device_event_handler(USB_DEVICE_EVENT event,
+                                  void* event_data,
+                                   uintptr_t context);
 
-void APP_Tasks(AppData* app_data) {
-  switch (app_data->state) {
-    case APP_GREETINGS:
-      if (!app_greetings(app_data)) {
-        break;
-      }
-    case APP_RUN_SERVICES:
-      APP_Network_Tasks(&app_data->network);
-      APP_USB_HID_Tasks(&app_data->usb_hid);
-      break;
-    case APP_ERROR:
-      // TODO(sergey): Do we need to do something here?
-      break;
-  }
-}
+#endif  // _APP_USB_HID_UTILS_H

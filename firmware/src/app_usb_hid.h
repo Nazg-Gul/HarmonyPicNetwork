@@ -20,40 +20,46 @@
 //
 // Author: Sergey Sharybin (sergey.vfx@gmail.com)
 
-#include "app.h"
+#ifndef _APP_USB_HID_H
+#define _APP_USB_HID_H
 
-#include "app_command.h"
-#include "app_network.h"
-#include "app_usb_hid.h"
+#include "system_definitions.h"
 
-static bool app_greetings(AppData* app_data) {
-  SYS_CONSOLE_MESSAGE("====================================\r\n");
-  SYS_CONSOLE_MESSAGE("***  Ethernet/Wi-Fi TCP/IP Demo  ***\r\n");
-  SYS_CONSOLE_MESSAGE("====================================\r\n\r\n");
-  app_data->state = APP_RUN_SERVICES;
-  return true;
-}
+typedef enum {
+  // USB HID is initializing.
+  APP_USB_HID_STATE_INIT,
+  // USB HID is waiting for configuration.
+  APP_USB_HID_STATE_WAIT_FOR_CONFIGURATION,
+  // USB HID is running the main tasks.
+  APP_USB_HID_STATE_MAIN_TASK,
+  // USB HID system encountered an error.
+  APP_USB_HID_STATE_ERROR,
+} AppUSBHIDState;
 
-void APP_Initialize(AppData* app_data, SYSTEM_OBJECTS* system_objects) {
-  app_data->system_objects = system_objects;
-  app_data->state = APP_GREETINGS;
-  APP_Command_Initialize(app_data);
-  APP_Network_Initialize(&app_data->network, app_data->system_objects);
-  APP_USB_HID_Initialize(&app_data->usb_hid);
-}
 
-void APP_Tasks(AppData* app_data) {
-  switch (app_data->state) {
-    case APP_GREETINGS:
-      if (!app_greetings(app_data)) {
-        break;
-      }
-    case APP_RUN_SERVICES:
-      APP_Network_Tasks(&app_data->network);
-      APP_USB_HID_Tasks(&app_data->usb_hid);
-      break;
-    case APP_ERROR:
-      // TODO(sergey): Do we need to do something here?
-      break;
-  }
-}
+typedef struct {
+  AppUSBHIDState state;
+
+  USB_DEVICE_HANDLE  us_handle;
+
+  uint8_t* receive_data_buffer;
+  uint8_t* transmit_data_buffer;
+
+  bool is_device_configured;
+
+  USB_DEVICE_HID_TRANSFER_HANDLE tx_transfer_handle;
+  USB_DEVICE_HID_TRANSFER_HANDLE rx_transfer_handle;
+
+  uint8_t configuration_value;
+
+  bool is_hid_data_received;
+  bool is_hid_data_transmitted;
+
+  uint8_t idle_rate;
+} AppUSBHIDData;
+
+
+void APP_USB_HID_Initialize(AppUSBHIDData* app_usb_hid_data);
+void APP_USB_HID_Tasks(AppUSBHIDData* app_usb_hid_data);
+
+#endif  // _APP_USB_HID_H

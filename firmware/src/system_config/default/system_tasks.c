@@ -85,6 +85,14 @@ void SYS_Tasks ( void )
     NET_PRES_Tasks(sysObj.netPres);
     /* Maintain the TCP/IP Stack*/
     TCPIP_STACK_Task(sysObj.tcpip);
+
+ 
+    /* USB FS Driver Task Routine */ 
+     DRV_USBFS_Tasks(sysObj.drvUSBObject);
+     
+    /* USB Device layer tasks routine */ 
+    USB_DEVICE_Tasks(sysObj.usbDevObject0);
+
 }
 
 

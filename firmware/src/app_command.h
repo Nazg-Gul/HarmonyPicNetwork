@@ -27,4 +27,4 @@
 
 void APP_Command_Initialize(AppData* app_data);
 
-#endif  // _APP_H
+#endif  // _APP_COMMAND_H

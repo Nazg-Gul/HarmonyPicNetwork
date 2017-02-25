@@ -31,6 +31,7 @@
 #include "system_definitions.h"
 
 #include "app_network.h"
+#include "app_usb_hid.h"
 
 typedef enum {
   // Show greetings message in the console.
@@ -46,6 +47,7 @@ typedef struct {
 
   AppState state;
   AppNetworkData network;
+  AppUSBHIDData usb_hid;
 } AppData;
 
 
